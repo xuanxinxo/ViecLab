@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["mongodb"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+
+model Application {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @db.Date
+  cv        String?
+  email     String
+  hiring    Hiring?  @relation(fields: [hiringId], references: [id])
+  hiringId  String?  @db.ObjectId
+  job       Job?     @relation(fields: [jobId], references: [id])
+  jobId     String?  @db.ObjectId
+  message   String?
+  name      String
+  phone     String
+}
+
+model Hiring {
+  img            String?
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  benefits       String[]
+  company        String
+  deadline       DateTime      @db.Date
+  description    String
+  location       String
+  postedDate     DateTime      @db.Date
+  requirements   String[]
+  salary         String
+  title          String
+  type           String
+  applications   Application[]
+}
+
+model Job {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  img          String?
+  benefits     String[]
+  company      String
+  createdAt    DateTime?     @db.Date
+  deadline     DateTime      @db.Date
+  description  String
+  isRemote     Boolean?
+  location     String
+  postedDate   DateTime      @db.Date
+  requirements String[]
+  salary       String
+  status       String
+  tags         String[]
+  title        String
+  type         String
+  applications Application[]
+}
+
+model NewJob {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  img          String?
+  benefits     String[]
+  company      String
+  createdAt    DateTime @default(now())
+  deadline     DateTime
+  description  String
+  isRemote     Boolean
+  location     String
+  postedDate   DateTime @default(now())
+  requirements String[]
+  salary       String
+  status       String
+  tags         String[]
+  title        String
+  type         String
+}
+
+
+model Post {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  slug Json?  @unique
+}
+
+model User {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name                      String
+  email                     String    @unique
+  password                  String
+  role                      UserRole  @default(USER)
+  isEmailVerified           Boolean   @default(false)
+  emailVerificationToken    String?
+  emailVerificationExpires  DateTime? @db.Date
+  passwordResetToken        String?
+  passwordResetExpires      DateTime? @db.Date
+  refreshToken              String?
+  refreshTokenExpires       DateTime? @db.Date
+  failedLoginAttempts       Int       @default(0)
+  accountLockedUntil        DateTime? @db.Date
+  lastLogin                 DateTime? @db.Date
+  createdAt                 DateTime  @default(now()) @db.Date
+  updatedAt                 DateTime  @updatedAt @db.Date
+}
+
+model news {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  v       Int    @map("__v")
+  date    String
+  image   String
+  link    String
+  summary String
+  title   String
+}
