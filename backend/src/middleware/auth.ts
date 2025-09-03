@@ -18,17 +18,17 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
       return res.status(401).json({ error: 'Vui lòng đăng nhập để truy cập tài nguyên này' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { userId: string; username?: string; role?: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { userId: number; username?: string; role?: string };
     
-    // Check if this is an admin token (userId = '0')
-    if (decoded.userId === '0' && decoded.role === 'ADMIN') {
+    // Check if this is an admin token (userId = 1, 2, 3 and role = 'admin')
+    if ((decoded.userId === 1 || decoded.userId === 2 || decoded.userId === 3) && decoded.role === 'admin') {
       // Admin user - create mock user object
       req.user = {
-        id: '0',
+        id: decoded.userId.toString(),
         name: decoded.username || 'admin',
         email: 'admin@example.com',
         createdAt: new Date(),
-        role: 'ADMIN'
+        role: 'admin'
       };
       return next();
     }

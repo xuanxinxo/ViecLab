@@ -178,7 +178,8 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     }
 
     // Check if email is verified
-    if (!user.isEmailVerified) {
+    // Temporarily disable email verification for development
+    if (process.env.NODE_ENV === 'production' && !user.isEmailVerified) {
       return res.status(403).json({
         success: false,
         message: 'Vui lòng xác thực email trước khi đăng nhập.'
