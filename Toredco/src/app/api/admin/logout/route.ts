@@ -1,16 +1,22 @@
-import { serverCookieHelper } from "@/src/lib/cookieHelper";
-import { NextResponse } from "next/server";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server';
+import { serverCookieHelper } from '@/lib/cookieHelper';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true });
+    // Create response
+    const response = NextResponse.json({
+      success: true,
+      message: 'Logout successful'
+    });
+
+    // Clear admin token from cookies
     serverCookieHelper.deleteTokenFromResponse(response);
+
     return response;
   } catch (error) {
-    console.error("Logout error:", error);
+    console.error('Logout error:', error);
     return NextResponse.json(
-      { success: false, message: "Đăng xuất thất bại" },
+      { success: false, message: 'Logout failed' },
       { status: 500 }
     );
   }

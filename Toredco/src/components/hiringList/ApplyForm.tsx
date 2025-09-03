@@ -28,8 +28,11 @@ export default function ApplyForm({ hiringId, onClose }: ApplyFormProps) {
         body: JSON.stringify({ hiringId, name, email, phone, message }),
       });
       const data = await res.json();
+      console.log('Application response:', data);
       
-      if (data.success) {
+      // Handle nested response structure
+      const isSuccess = data.success && (data.data?.success !== false);
+      if (isSuccess) {
         setSuccess("Ứng tuyển thành công!");
         setName(""); 
         setEmail(""); 

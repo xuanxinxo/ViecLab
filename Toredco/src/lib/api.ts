@@ -23,8 +23,8 @@ api.interceptors.request.use(
     const publicRoutes = ['/auth/login', '/auth/register'];
     const isPublicRoute = config.url && publicRoutes.some(route => config.url?.includes(route));
     
-    // Add auth token for protected routes
-    if (!isPublicRoute) {
+    // Add auth token for protected routes (but not admin routes - they handle their own auth)
+    if (!isPublicRoute && !config.url?.includes('/admin/')) {
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -121,17 +121,71 @@ const createApiClient = <T>(endpoint: string) => ({
     api(config),
 });
 
+// Helper function to add admin token to requests
+const addAdminToken = (config: any) => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+};
+
 // API clients for different resources
 // Admin API client with admin-specific methods
 export const adminApi = {
   // User management
   users: {
-    getAll: (params?: any) => api.get('/admin/users', { params }),
-    getById: (id: string) => api.get(`/admin/users/${id}`),
-    update: (id: string, data: any) => api.put(`/admin/users/${id}`, data),
-    delete: (id: string) => api.delete(`/admin/users/${id}`),
+    getAll: (params?: any) => api.get('/admin/users', addAdminToken({ params })),
+    getById: (id: string) => api.get(`/admin/users/${id}`, addAdminToken({})),
+    update: (id: string, data: any) => api.put(`/admin/users/${id}`, data, addAdminToken({})),
+    delete: (id: string) => api.delete(`/admin/users/${id}`, addAdminToken({})),
   },
-  // Add other admin endpoints as needed
+  // Job management
+  jobs: {
+    getAll: (params?: any) => api.get('/admin/jobs', addAdminToken({ params })),
+    getById: (id: string) => api.get(`/admin/jobs/${id}`, addAdminToken({})),
+    create: (data: any) => api.post('/admin/jobs', data, addAdminToken({})),
+    update: (id: string, data: any) => api.put(`/admin/jobs/${id}`, data, addAdminToken({})),
+    delete: (id: string) => api.delete(`/admin/jobs/${id}`, addAdminToken({})),
+    updateStatus: (id: string, status: string) => api.put(`/admin/jobs/${id}/status`, { status }, addAdminToken({})),
+  },
+  // Application management
+  applications: {
+    getAll: (params?: any) => api.get('/admin/applications', addAdminToken({ params })),
+    getById: (id: string) => api.get(`/admin/applications/${id}`, addAdminToken({})),
+    update: (id: string, data: any) => api.put(`/admin/applications/${id}`, data, addAdminToken({})),
+    delete: (id: string) => api.delete(`/admin/applications/${id}`, addAdminToken({})),
+  },
+  // News management
+  news: {
+    getAll: (params?: any) => api.get('/admin/news', addAdminToken({ params })),
+    getById: (id: string) => api.get(`/admin/news/${id}`, addAdminToken({})),
+    create: (data: any) => api.post('/admin/news', data, addAdminToken({})),
+    update: (id: string, data: any) => api.put(`/admin/news/${id}`, data, addAdminToken({})),
+    delete: (id: string) => api.delete(`/admin/news/${id}`, addAdminToken({})),
+  },
+  // Hiring management
+  hirings: {
+    getAll: (params?: any) => api.get('/admin/hirings', addAdminToken({ params })),
+    getById: (id: string) => api.get(`/admin/hirings/${id}`, addAdminToken({})),
+    create: (data: any) => api.post('/admin/hirings', data, addAdminToken({})),
+    update: (id: string, data: any) => api.put(`/admin/hirings/${id}`, data, addAdminToken({})),
+    delete: (id: string) => api.delete(`/admin/hirings/${id}`, addAdminToken({})),
+  },
+  // System settings
+  settings: {
+    get: () => api.get('/admin/settings', addAdminToken({})),
+    update: (data: any) => api.put('/admin/settings', data, addAdminToken({})),
+  },
+  // Dashboard
+  dashboard: {
+    get: () => api.get('/admin/dashboard', addAdminToken({})),
+  },
+  // Profile
+  profile: {
+    get: () => api.get('/admin/profile', addAdminToken({})),
+  },
 };
 
 export const apiClient = {

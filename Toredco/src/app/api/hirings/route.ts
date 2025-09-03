@@ -8,7 +8,17 @@ export async function GET() {
       _sort: 'postedDate',
       _order: 'desc',
     });
-    return NextResponse.json({ success: true, data: response.data });
+    
+    // Handle both old and new response formats
+    const data = response.data;
+    
+    // If backend already returns {success: true, data: [...]}, just return it directly
+    if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+      return NextResponse.json(data);
+    }
+    
+    // Otherwise wrap it
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error('Lỗi khi lấy danh sách tuyển dụng:', err);
     return NextResponse.json(
@@ -37,7 +47,7 @@ export async function POST(req: Request) {
     } = body;
 
     // ✅ Kiểm tra các trường bắt buộc
-    if (!title || !company || !location || !type || !salary || !deadline || !img) {
+    if (!title || !company || !location || !type || !salary || !deadline) {
       return NextResponse.json(
         { success: false, message: 'Vui lòng điền đầy đủ thông tin bắt buộc' },
         { status: 400 }
@@ -74,7 +84,7 @@ export async function POST(req: Request) {
       type,
       salary,
       deadline: deadlineDate,
-      img,
+      img: img || '',
       description,
       requirements,
       benefits,
@@ -83,15 +93,27 @@ export async function POST(req: Request) {
 
     const response = await apiClient.hirings.create(hiringData);
 
+    // Handle both old and new response formats
+    const data = response.data;
+    
+    // If backend already returns {success: true, data: [...]}, just return it directly
+    if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+      return NextResponse.json(data);
+    }
+    
+    // Otherwise wrap it
     return NextResponse.json({ 
       success: true, 
-      data: response.data 
+      data 
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Lỗi khi thêm tin tuyển dụng:', err);
+    
+    // Handle specific error messages from backend
+    const errorMessage = err.response?.data?.message || 'Đã xảy ra lỗi khi thêm tin tuyển dụng';
     return NextResponse.json(
-      { success: false, message: 'Đã xảy ra lỗi khi thêm tin tuyển dụng' },
-      { status: 500 }
+      { success: false, message: errorMessage },
+      { status: err.response?.status || 500 }
     );
   }
 }

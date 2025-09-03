@@ -4,8 +4,9 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   // Kiểm tra nếu đang truy cập admin routes
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    // Bỏ qua trang login
-    if (request.nextUrl.pathname === '/admin/login') {
+    // Bỏ qua trang login và tất cả API routes
+    if (request.nextUrl.pathname === '/admin/login' || 
+        request.nextUrl.pathname.startsWith('/api/admin/')) {
       return NextResponse.next();
     }
 
@@ -18,12 +19,8 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
 
-    // Trong thực tế, verify token ở đây
-    // try {
-    //   jwt.verify(token, JWT_SECRET);
-    // } catch (error) {
-    //   return NextResponse.redirect(new URL('/admin/login', request.url));
-    // }
+    // Nếu có token, cho phép truy cập (không cần verify ở đây)
+    // Token sẽ được verify trong các API routes cụ thể
   }
 
   return NextResponse.next();

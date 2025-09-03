@@ -137,7 +137,7 @@ function FilteredJobsPage() {
   const handleApplySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const data = {
+    const formData = {
       name: (form.name as any).value,
       email: (form.email as any).value,
       phone: (form.phone as any).value,
@@ -148,9 +148,14 @@ function FilteredJobsPage() {
     const res = await fetch("/api/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(formData),
     });
-    if (res.ok) {
+    const responseData = await res.json();
+    console.log('Application response:', responseData);
+    
+    // Handle nested response structure
+    const isSuccess = responseData.success && (responseData.data?.success !== false);
+    if (isSuccess) {
       alert("Ứng tuyển thành công!");
       setApplyModal({ open: false, job: null });
     } else {

@@ -32,16 +32,32 @@ export default function JobList({
       setLoading(true);
       setError("");
 
+      console.log("Loading jobs from hirings API...");
+      
       // Using the new API client with proper typing
       const response = await apiClient.hirings.getAll();
-      const responseData = response as unknown as { data: Job[] };
-      const jobsData = responseData.data;
+      console.log("API Response:", response);
       
-      if (Array.isArray(jobsData)) {
-        setJobs(jobsData.slice(0, limit));
+      // Handle different response formats
+      let jobsData: Job[] = [];
+      
+      if (response.data && Array.isArray(response.data)) {
+        // Direct array response
+        jobsData = response.data;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        // Nested data response
+        jobsData = response.data.data;
+      } else if (Array.isArray(response)) {
+        // Direct array response
+        jobsData = response;
       } else {
+        console.error("Unexpected response format:", response);
         throw new Error("Invalid response format");
       }
+      
+      console.log("Processed jobs data:", jobsData);
+      setJobs(jobsData.slice(0, limit));
+      
     } catch (err: any) {
       console.error("Error loading jobs:", err);
       setError("Có lỗi xảy ra khi tải dữ liệu");

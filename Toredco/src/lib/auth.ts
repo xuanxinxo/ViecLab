@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'toredco-admin-secret-key-2024-super-secure';
 
 const adminUsers = [
   {
@@ -103,25 +103,43 @@ export function getAdminFromRequest(request: NextRequest): AdminUser | null {
 
 // Authenticate admin user
 export function authenticateAdmin(username: string, password: string): AdminUser | null {
+  console.log('🔍 [AUTH] authenticateAdmin called with:', { username, password: password ? '***' : 'undefined' });
+  console.log('🔍 [AUTH] Available users:', adminUsers.map(u => ({ username: u.username, id: u.id, role: u.role })));
+  
   const user = adminUsers.find(u => u.username === username);
+  console.log('🔍 [AUTH] Found user:', user ? { username: user.username, id: user.id, role: user.role } : 'NOT FOUND');
+  
   if (user) {
+    console.log('🔍 [AUTH] User found, checking password...');
     // Nếu password đã hash, dùng bcrypt.compareSync
     if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+      console.log('🔍 [AUTH] Password is hashed, using bcrypt.compareSync');
       if (bcrypt.compareSync(password, user.password)) {
+        console.log('✅ [AUTH] Password verified with bcrypt');
         return {
           userId: user.id,
           username: user.username,
           role: user.role
         };
+      } else {
+        console.log('❌ [AUTH] Password verification failed with bcrypt');
       }
     } else if (user.password === password) {
+      console.log('✅ [AUTH] Password verified with plain text comparison');
       return {
         userId: user.id,
         username: user.username,
         role: user.role
       };
+    } else {
+      console.log('❌ [AUTH] Password verification failed with plain text comparison');
+      console.log('🔍 [AUTH] Expected:', user.password, 'Received:', password);
     }
+  } else {
+    console.log('❌ [AUTH] User not found in adminUsers array');
   }
+  
+  console.log('❌ [AUTH] Authentication failed, returning null');
   return null;
 }
 

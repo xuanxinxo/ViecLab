@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { apiClient } from '@/src/lib/api';
-import { SuspenseBoundary } from '@/src/components/SuspenseBoundary';
+import { apiClient } from '@/lib/api';
+import { SuspenseBoundary } from '@/components/SuspenseBoundary';
 import Link from 'next/link';
 
 export default function LoginPage() {

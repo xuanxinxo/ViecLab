@@ -66,20 +66,18 @@ export async function getApplications(params?: PaginationParams): Promise<Pagina
 }
 
 export async function getFeaturedApplications(limit: number = 8): Promise<Application[]> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  const base = `${apiUrl}/api/applications`;
-  const urlWithFilters = `${base}?limit=${limit}&sort=-createdAt`;
+  // Use frontend API route instead of calling backend directly
+  const url = `/api/applications?limit=${limit}`;
   
-  console.log(`[getFeaturedApplications] Fetching from: ${urlWithFilters}`);
+  console.log(`[getFeaturedApplications] Fetching from: ${url}`);
   
   try {
-    let response = await fetch(urlWithFilters, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      credentials: 'include',
     });
     
     if (!response.ok) {
@@ -88,7 +86,7 @@ export async function getFeaturedApplications(limit: number = 8): Promise<Applic
       throw new Error(`API request failed with status ${response.status}`);
     }
     
-    let data = await response.json();
+    const data = await response.json();
     console.log('[getFeaturedApplications] API response:', data);
     
     // Handle different response formats
@@ -98,16 +96,6 @@ export async function getFeaturedApplications(limit: number = 8): Promise<Applic
         ? data.data 
         : [];
     
-    // Fallback: if empty (e.g., no status field), retry without any filters
-    if (!applications.length) {
-      console.log('[getFeaturedApplications] Empty result, retrying without filters...');
-      response = await fetch(base);
-      if (response.ok) {
-        data = await response.json();
-        applications = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-      }
-    }
-
     console.log(`[getFeaturedApplications] Found ${applications.length} applications`);
     return applications;
     

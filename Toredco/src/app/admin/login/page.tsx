@@ -31,17 +31,15 @@ export default function AdminLogin() {
     setLoading(true);
     setError('');
 
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/login`;
-    console.log('Submitting login to:', apiUrl);
-
     try {
-      // Make the actual POST request
-      const response = await fetch(apiUrl, {
+      // Make the actual POST request to the same domain
+      const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        credentials: 'include', // Quan trọng để gửi và nhận cookie
         body: JSON.stringify({
           username: username,
           password: password

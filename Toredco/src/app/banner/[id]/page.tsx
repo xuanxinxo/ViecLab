@@ -134,7 +134,7 @@ export default function BannerDetail() {
                 <p className="text-gray-700 leading-relaxed">{job.description}</p>
               </section>
 
-              {job.requirements.length > 0 && (
+              {job.requirements && job.requirements.length > 0 && (
                 <section>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">📌 Yêu cầu công việc</h3>
                   <ul className="list-disc list-inside text-gray-700 space-y-1">
@@ -145,7 +145,7 @@ export default function BannerDetail() {
                 </section>
               )}
 
-              {job.benefits.length > 0 && (
+              {job.benefits && job.benefits.length > 0 && (
                 <section>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">🎁 Quyền lợi</h3>
                   <ul className="list-disc list-inside text-gray-700 space-y-1">

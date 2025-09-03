@@ -46,7 +46,11 @@ export default function ApplyModal({ open, onClose, job }: ApplyModalProps) {
         body: JSON.stringify({ ...form, hiringId: job.id }),
       });
       const data = await res.json();
-      if (data.success) {
+      console.log('Application response:', data);
+      
+      // Handle nested response structure
+      const isSuccess = data.success && (data.data?.success !== false);
+      if (isSuccess) {
         setMessage('Ứng tuyển thành công!');
         setForm({ name: '', email: '', phone: '', cv: '', message: '' });
         setTimeout(onClose, 1200);

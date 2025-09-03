@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/src/lib/mongodb';
-import { News } from '@/src/models/News';
+import { connectDB } from '@/lib/mongodb';
+import { News } from '@/models/News';
 import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
 

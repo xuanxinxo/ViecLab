@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { getFeaturedApplications, Application } from '@/src/lib/api/applications';
+import { getFeaturedApplications, Application } from '@/lib/api/applications';
 import HiringFilter from '../HiringFilter';
 
 // Application interface is now imported from the API service
@@ -157,20 +157,6 @@ export function HiringList() {
           })}
 
         </div>
-
-        {/* Nút xem thêm nếu còn đơn ứng tuyển */}
-        {visibleCount < applications.length && (
-          <div className="text-center mt-8">
-            <button
-              onClick={() => setVisibleCount(prev => prev + 4)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition"
-            >
-              Xem thêm
-            </button>
-          </div>
-        )}
-
-        {/* Nút xem tất cả */}
         <div className="text-center mt-12">
           <Link
             href="/#"

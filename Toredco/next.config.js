@@ -16,12 +16,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Bỏ qua lỗi ESLint
   },
-  // Thêm cấu hình để bỏ qua một số lỗi phổ biến
-  experimental: {
-    serverActions: true,
-    // Bỏ qua lỗi về dynamic routes
-    serverActionsBodySizeLimit: '2mb',
-  },
   // Tắt một số cảnh báo không cần thiết
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',

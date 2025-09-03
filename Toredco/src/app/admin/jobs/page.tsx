@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-// import { apiClient } from '../../../../../src/lib/api';
-import { apiClient } from '../../../lib/api';
+
 interface Job {
   id: string;
   _id?: string; // For MongoDB compatibility
@@ -24,7 +23,15 @@ export default function AdminJobs() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [visibleCount, setVisibleCount] = useState(10);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; show: boolean }>({ message: '', type: 'info', show: false });
+  const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
   const router = useRouter();
+
+  // Toast notification function
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ message, type, show: true });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
 
   useEffect(() => {
     // Check authentication in the client-side only
@@ -43,20 +50,38 @@ export default function AdminJobs() {
       setLoading(true);
       setError('');
       
-      const response = await apiClient.jobs.getAll({
-        status: filter === 'all' ? '' : filter,
-        _sort: 'createdAt',
-        _order: 'desc',
-        _limit: 100
+      // Call our admin API route directly
+      const queryParams = filter === 'all' ? '' : `?status=${filter}`;
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+
+      const response = await fetch(`/api/admin/jobs${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('🔍 [ADMIN JOBS PAGE] API Response:', result);
       
       // Handle different response formats
       let jobsData = [];
-      if (Array.isArray(response)) {
-        jobsData = response;
-      } else if (response && typeof response === 'object' && 'data' in response) {
-        jobsData = Array.isArray(response.data) ? response.data : [];
+      if (result.success && result.data) {
+        jobsData = Array.isArray(result.data) ? result.data : [];
+      } else if (Array.isArray(result)) {
+        jobsData = result;
       }
+      
+      console.log('🔍 [ADMIN JOBS PAGE] Jobs data:', jobsData);
       
       // Format jobs data
       const formattedJobs = jobsData.map((job) => ({
@@ -72,10 +97,11 @@ export default function AdminJobs() {
         deadline: job.deadline ? new Date(job.deadline).toLocaleDateString() : 'N/A'
       }));
       
+      console.log('✅ [ADMIN JOBS PAGE] Formatted jobs:', formattedJobs);
       setJobs(formattedJobs);
     } catch (error) {
-      console.error('Error loading jobs:', error);
-      // You might want to show an error message to the user here
+      console.error('💥 [ADMIN JOBS PAGE] Error loading jobs:', error);
+      setError('Không thể tải danh sách việc làm. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -83,47 +109,86 @@ export default function AdminJobs() {
 
   const handleStatusChange = async (jobId: string, newStatus: string) => {
     try {
+      setActionLoading(prev => ({ ...prev, [`status-${jobId}`]: true }));
+      console.log('🔄 [ADMIN JOBS PAGE] Updating job status:', { jobId, newStatus });
+      
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`/api/admin/jobs/${jobId}`, {
-        method: 'PATCH',
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+
+      const response = await fetch(`/api/admin/jobs/${jobId}/status`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ status: newStatus })
       });
+      
       const data = await response.json();
+      console.log('✅ [ADMIN JOBS PAGE] Status update response:', data);
+      
       if (data.success) {
         // Cập nhật trực tiếp danh sách thay vì load lại toàn bộ
         setJobs(prev =>
           prev.map(job => job.id === jobId ? { ...job, status: newStatus } : job)
         );
+        
+        // Hiển thị thông báo thành công với toast đẹp hơn
+        const statusText = newStatus === 'active' ? 'Đang hoạt động' : 
+                          newStatus === 'pending' ? 'Chờ duyệt' : 
+                          newStatus === 'expired' ? 'Hết hạn' : newStatus;
+        
+        // Tạo toast notification
+        showToast(`✅ Đã cập nhật trạng thái việc làm thành "${statusText}"`, 'success');
       } else {
-        alert('Có lỗi xảy ra khi cập nhật trạng thái');
+        showToast(`❌ Lỗi: ${data.message || 'Có lỗi xảy ra khi cập nhật trạng thái'}`, 'error');
       }
     } catch (error) {
-      console.error('Error updating job status:', error);
-      alert('Có lỗi xảy ra khi cập nhật trạng thái');
+      console.error('💥 [ADMIN JOBS PAGE] Error updating job status:', error);
+      showToast('❌ Có lỗi xảy ra khi cập nhật trạng thái. Vui lòng thử lại.', 'error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`status-${jobId}`]: false }));
     }
   };
 
   const handleDelete = async (jobId: string) => {
-    if (confirm('Bạn có chắc muốn xóa việc làm này?')) {
+    if (confirm('Bạn có chắc muốn xóa việc làm này? Việc làm sẽ được xóa vĩnh viễn khỏi hệ thống.')) {
       try {
+        setActionLoading(prev => ({ ...prev, [`delete-${jobId}`]: true }));
+        console.log('🗑️ [ADMIN JOBS PAGE] Deleting job:', jobId);
+        
         const token = localStorage.getItem('adminToken');
+        if (!token) {
+          router.push('/admin/login');
+          return;
+        }
+
         const response = await fetch(`/api/admin/jobs/${jobId}`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
         });
+        
         const data = await response.json();
+        console.log('✅ [ADMIN JOBS PAGE] Delete response:', data);
+        
         if (data.success) {
+          // Cập nhật trực tiếp danh sách thay vì load lại toàn bộ
           setJobs(prev => prev.filter(job => job.id !== jobId));
+          showToast('✅ Đã xóa việc làm thành công!', 'success');
         } else {
-          alert('Có lỗi xảy ra khi xóa việc làm');
+          showToast(`❌ Lỗi: ${data.message || 'Có lỗi xảy ra khi xóa việc làm'}`, 'error');
         }
       } catch (error) {
-        console.error('Error deleting job:', error);
-        alert('Có lỗi xảy ra khi xóa việc làm');
+        console.error('💥 [ADMIN JOBS PAGE] Error deleting job:', error);
+        showToast('❌ Có lỗi xảy ra khi xóa việc làm. Vui lòng thử lại.', 'error');
+      } finally {
+        setActionLoading(prev => ({ ...prev, [`delete-${jobId}`]: false }));
       }
     }
   };
@@ -134,13 +199,27 @@ export default function AdminJobs() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-xl text-gray-600">Đang tải danh sách việc làm...</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-100 mt-20">
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-24 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+          toast.type === 'success' ? 'bg-green-500 text-white' :
+          toast.type === 'error' ? 'bg-red-500 text-white' :
+          'bg-blue-500 text-white'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+      
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -151,17 +230,53 @@ export default function AdminJobs() {
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">Quản lý việc làm</h1>
             </div>
-            <Link
-              href="/admin/jobs/create"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              + Đăng việc làm mới
-            </Link>
+            <div className="flex space-x-3">
+              <button
+                onClick={loadJobs}
+                disabled={loading}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? '⏳...' : '🔄 Làm mới'}
+              </button>
+              <Link
+                href="/admin/jobs/create"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                + Đăng việc làm mới
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Lỗi tải dữ liệu</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={loadJobs}
+                    className="bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded-md text-sm"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex space-x-4 overflow-x-auto">
@@ -220,7 +335,9 @@ export default function AdminJobs() {
                            job.status === 'pending' ? 'Chờ duyệt' : 'Hết hạn'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{new Date(job.postedDate).toLocaleDateString('vi-VN')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {job.postedDate === 'N/A' ? 'N/A' : new Date(job.postedDate).toLocaleDateString('vi-VN')}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Link
@@ -232,16 +349,26 @@ export default function AdminJobs() {
                           {job.status === 'pending' && (
                             <button
                               onClick={() => handleStatusChange(job.id, 'active')}
-                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-xs"
+                              disabled={actionLoading[`status-${job.id}`]}
+                              className={`px-3 py-1 rounded-md text-xs text-white ${
+                                actionLoading[`status-${job.id}`] 
+                                  ? 'bg-green-400 cursor-not-allowed' 
+                                  : 'bg-green-500 hover:bg-green-600'
+                              }`}
                             >
-                              Duyệt
+                              {actionLoading[`status-${job.id}`] ? '⏳...' : 'Duyệt'}
                             </button>
                           )}
                           <button
                             onClick={() => handleDelete(job.id)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-xs"
+                            disabled={actionLoading[`delete-${job.id}`]}
+                            className={`px-3 py-1 rounded-md text-xs text-white ${
+                              actionLoading[`delete-${job.id}`] 
+                                ? 'bg-red-400 cursor-not-allowed' 
+                                : 'bg-red-500 hover:bg-red-600'
+                            }`}
                           >
-                            Xóa
+                            {actionLoading[`delete-${job.id}`] ? '⏳...' : 'Xóa'}
                           </button>
                         </div>
                       </td>

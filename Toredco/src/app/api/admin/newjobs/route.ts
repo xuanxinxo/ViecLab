@@ -78,81 +78,103 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     console.log('Status filter from URL:', status);
 
-    // Tạo query parameters cho API
-    const queryParams: Record<string, any> = {
-      _sort: 'createdAt',
-      _order: 'desc',
-      _limit: 100, // Giới hạn số lượng bản ghi trả về
-    };
+    // Tạo sample data cho testing
+    const sampleJobs = [
+      {
+        id: 'sample-1',
+        title: 'Frontend Developer React',
+        company: 'TechCorp Vietnam',
+        location: 'Hồ Chí Minh',
+        type: 'Full-time',
+        salary: '25.000.000 - 35.000.000 VND',
+        description: 'Chúng tôi đang tìm kiếm một Frontend Developer có kinh nghiệm với React để tham gia vào dự án phát triển ứng dụng web.',
+        requirements: ['Kinh nghiệm 2+ năm với React', 'Thành thạo JavaScript/TypeScript', 'Hiểu biết về CSS/SCSS'],
+        benefits: ['Lương thưởng hấp dẫn', 'Bảo hiểm y tế', 'Môi trường làm việc trẻ trung'],
+        tags: ['React', 'JavaScript', 'TypeScript'],
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'pending',
+        postedDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        isRemote: false,
+        img: '/img/tech.jpg'
+      },
+      {
+        id: 'sample-2',
+        title: 'Backend Developer Node.js',
+        company: 'StartupHub',
+        location: 'Hà Nội',
+        type: 'Full-time',
+        salary: '20.000.000 - 30.000.000 VND',
+        description: 'Tham gia phát triển backend cho ứng dụng fintech với Node.js và MongoDB.',
+        requirements: ['Kinh nghiệm Node.js/Express', 'Hiểu biết về MongoDB', 'Kiến thức về RESTful API'],
+        benefits: ['Stock options', 'Flexible working hours', 'Remote work'],
+        tags: ['Node.js', 'MongoDB', 'Express'],
+        deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'approved',
+        postedDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        isRemote: true,
+        img: '/img/startup.jpg'
+      },
+      {
+        id: 'sample-3',
+        title: 'UI/UX Designer',
+        company: 'Creative Studio',
+        location: 'Đà Nẵng',
+        type: 'Part-time',
+        salary: '15.000.000 - 20.000.000 VND',
+        description: 'Thiết kế giao diện người dùng cho các ứng dụng mobile và web.',
+        requirements: ['Kinh nghiệm Figma/Sketch', 'Portfolio đẹp', 'Hiểu biết về UX'],
+        benefits: ['Làm việc linh hoạt', 'Môi trường sáng tạo', 'Đào tạo liên tục'],
+        tags: ['UI/UX', 'Figma', 'Mobile Design'],
+        deadline: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'pending',
+        postedDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        isRemote: false,
+        img: '/img/design.jpg'
+      },
+      {
+        id: 'sample-4',
+        title: 'Mobile Developer Flutter',
+        company: 'AppStudio',
+        location: 'Hồ Chí Minh',
+        type: 'Contract',
+        salary: '30.000.000 - 40.000.000 VND',
+        description: 'Phát triển ứng dụng mobile cross-platform với Flutter cho startup fintech.',
+        requirements: ['Kinh nghiệm Flutter/Dart', 'Hiểu biết về state management', 'Kinh nghiệm với Firebase'],
+        benefits: ['Lương cao', 'Tham gia dự án thú vị', 'Cơ hội thăng tiến'],
+        tags: ['Flutter', 'Dart', 'Mobile', 'Firebase'],
+        deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'rejected',
+        postedDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        isRemote: true,
+        img: '/img/mobile.jpg'
+      }
+    ];
 
-    // Thêm filter status nếu có
+    // Lọc theo status nếu có
+    let filteredJobs = sampleJobs;
     if (status && status !== 'all') {
-      queryParams.status = status;
-      console.log('Filtering by status:', status);
-    } else {
-      // Nếu là 'all' hoặc không có status, lấy tất cả các trạng thái
-      queryParams.status = ['pending', 'approved', 'rejected'];
-      console.log('No specific status filter, getting all statuses');
+      filteredJobs = sampleJobs.filter(job => job.status === status);
+      console.log(`Filtered to ${filteredJobs.length} jobs with status: ${status}`);
     }
 
-    console.log('Final query params:', JSON.stringify(queryParams, null, 2));
-    console.log('API Client baseURL:', apiClient.jobs['endpoint']);
+    console.log(`Returning ${filteredJobs.length} jobs`);
 
-    try {
-      // Gọi API để lấy danh sách jobs
-      console.log('Calling apiClient.jobs.getAll with params:', JSON.stringify(queryParams));
-      const response = await apiClient.jobs.getAll(queryParams);
-      console.log('API Response status:', response.status);
-      console.log('API Response headers:', JSON.stringify(response.headers, null, 2));
-      
-      // Kiểm tra và xử lý dữ liệu trả về
-      const responseData = response.data || {};
-      let jobsData = [];
-      
-      // Handle different possible response formats
-      if (Array.isArray(responseData)) {
-        console.log('Response data is an array, length:', responseData.length);
-        jobsData = responseData;
-      } else if (responseData && Array.isArray(responseData.data)) {
-        console.log('Response data has a data array, length:', responseData.data.length);
-        jobsData = responseData.data;
-      } else if (responseData && responseData.news) {
-        console.log('Response data has a news array, length:', responseData.news.length);
-        jobsData = responseData.news;
-      } else {
-        console.warn('Unexpected response format:', JSON.stringify(responseData, null, 2));
-      }
-      
-      console.log(`Found ${jobsData.length} jobs`);
-      
-      // Log mẫu dữ liệu để kiểm tra
-      if (jobsData.length > 0) {
-        console.log('Sample job data (first 3 items):', 
-          JSON.stringify(jobsData.slice(0, 3), null, 2));
-      } else {
-        console.warn('No jobs found with the current filters');
-      }
-
-      return NextResponse.json({ 
-        success: true, 
-        data: jobsData,
-        timestamp: new Date().toISOString(),
-        params: queryParams
-      });
-    } catch (apiError) {
-      console.error('Error calling jobs API:', {
-        message: apiError.message,
-        stack: apiError.stack,
-        response: apiError.response?.data
-      });
-      throw apiError;
-    }
+    return NextResponse.json({ 
+      success: true, 
+      data: filteredJobs,
+      timestamp: new Date().toISOString(),
+      params: { status: status || 'all' }
+    });
   } catch (error: any) {
     console.error('Lỗi khi lấy danh sách công việc:', error);
     return NextResponse.json(
       { 
         success: false, 
-        message: error.response?.data?.message || 'Đã xảy ra lỗi khi tải danh sách công việc' 
+        message: error.message || 'Đã xảy ra lỗi khi tải danh sách công việc' 
       },
       { status: 500 }
     );

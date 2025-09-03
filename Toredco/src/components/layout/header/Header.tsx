@@ -138,7 +138,7 @@ export default function Header() {
               Liên hệ
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-1/2"></span>
             </a>
-
+{/* 
             <Link
               href="/reviews"
               className={`nav-link ${isScrolled
@@ -148,7 +148,7 @@ export default function Header() {
             >
               Đánh giá
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-1/2"></span>
-            </Link>
+            </Link> */}
           </div>
 
           {/* Auth Buttons */}

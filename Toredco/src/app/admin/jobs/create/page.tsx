@@ -22,12 +22,7 @@ export default function CreateJob() {
   const router = useRouter();
 
   useEffect(() => {
-    // Kiểm tra authentication
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
+    // Authentication is handled by middleware
   }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -77,8 +72,12 @@ export default function CreateJob() {
 
     try {
       const token = localStorage.getItem('adminToken');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+
       const response = await fetch('/api/admin/jobs', {
-        credentials: 'include',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

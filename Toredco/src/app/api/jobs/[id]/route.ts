@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiClient } from '../../../../lib/api';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
@@ -18,15 +17,27 @@ export async function GET(
       );
     }
 
-    const response = await apiClient.jobs.getById(id);
-    if (!response.data) {
-      return NextResponse.json(
-        { error: 'Job not found' }, 
-        { status: 404 }
-      );
+    // Call backend API directly
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const response = await fetch(`${backendUrl}/api/jobs/${id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json(
+          { error: 'Job not found' }, 
+          { status: 404 }
+        );
+      }
+      throw new Error(`Backend API error: ${response.status}`);
     }
 
-    return NextResponse.json(response.data);
+    const jobData = await response.json();
+    return NextResponse.json(jobData);
   } catch (error) {
     console.error('Error fetching job:', error);
     return NextResponse.json(
@@ -117,14 +128,22 @@ export async function PUT(
       updateData.img = imageUrl;
     }
 
-    // Update job using API client
-    const response = await apiClient.jobs.update(id, updateData);
-    
-    if (!response.data) {
-      throw new Error('Failed to update job');
+    // Call backend API to update job
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const response = await fetch(`${backendUrl}/api/jobs/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.status}`);
     }
 
-    return NextResponse.json(response.data);
+    const updatedJob = await response.json();
+    return NextResponse.json(updatedJob);
   } catch (error) {
     console.error('Error updating job:', error);
     return NextResponse.json(
@@ -147,13 +166,20 @@ export async function DELETE(
       );
     }
 
-    // Delete job using API client
-    const response = await apiClient.jobs.delete(id);
-    
-    if (!response.data) {
-      throw new Error('Failed to delete job');
+    // Call backend API to delete job
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const response = await fetch(`${backendUrl}/api/jobs/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.status}`);
     }
 
+    console.log('✅ [JOBS API] Job deleted successfully:', id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting job:', error);

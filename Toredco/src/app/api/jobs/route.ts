@@ -1,165 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiClient } from '../../../lib/api';
 
-export const dynamic = 'force-dynamic';
-// Cache the job listings for 5 minutes to reduce database load
-export const revalidate = 300; // 5 minutes
+export const dynamic = "force-dynamic";
 
-// In-memory cache with 5-minute TTL
-const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-
+// GET /api/jobs - Get all jobs
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const search = (searchParams.get('q') || '').trim(); // Changed from 'search' to 'q'
-    const type = (searchParams.get('type') || '').trim();
-    const location = (searchParams.get('location') || '').trim();
+    console.log('🔍 [JOBS API] GET request received');
     
-    console.log('Search params:', { search, type, location }); // Add debug log
-    
-    // Create a cache key based on the request parameters
-    const cacheKey = JSON.stringify({ search, type, location });
-    
-    // Check cache first
-    const cachedData = cache.get(cacheKey);
-    if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_TTL) {
-      return NextResponse.json({
-        ...cachedData.data,
-        cached: true,
-        executionTime: Date.now() - startTime
-      });
-    }
-
-    // Remove pagination for initial load
-    const limit = 100; // Increased limit for initial load
-
-    // Build query parameters for the API
-    let queryParams = new URLSearchParams();
-    
-    // First, fetch all active jobs
-    const response = await apiClient.jobs.getAll({
-      status: 'active',
-      _sort: 'createdAt',
-      _order: 'desc'
-    });
-    
-    // Log the raw response for debugging
-    console.log('Raw API response type:', typeof response);
-    
-    // Ensure jobs is always an array
-    let jobs: any[] = [];
-    
-    try {
-      // Type assertion to handle Axios response
-      const axiosResponse = response as any;
-      
-      // Log basic response info
-      console.log('Response status:', axiosResponse?.status);
-      
-      // Get the response data
-      const responseData = axiosResponse?.data || axiosResponse;
-      
-      // Log the structure of the response data
-      console.log('Response data type:', typeof responseData);
-      
-      // Handle different response formats
-      if (Array.isArray(responseData)) {
-        // Case 1: Response is directly an array of jobs
-        jobs = responseData;
-      } else if (responseData && typeof responseData === 'object') {
-        // Case 2: Response is an object with data property
-        if (Array.isArray(responseData.data)) {
-          jobs = responseData.data;
-        } 
-        // Case 3: Response has a jobs array
-        else if (Array.isArray(responseData.jobs)) {
-          jobs = responseData.jobs;
-        }
-        // Case 4: Response has a data.jobs array
-        else if (responseData.data && Array.isArray(responseData.data.jobs)) {
-          jobs = responseData.data.jobs;
-        }
-      }
-      
-      console.log(`Fetched ${jobs.length} active jobs`);
-    } catch (error) {
-      console.error('Error processing jobs response:', error);
-      jobs = [];
-    }
-
-    // Apply exact matching filters for job titles only
-    if (search) {
-      const searchLower = search.toLowerCase().trim();
-      console.log(`Searching for jobs with title containing: "${searchLower}"`);
-      
-      const originalCount = jobs.length;
-      
-      // First try exact match in title
-      jobs = jobs.filter(job => {
-        const title = (job.title || '').toLowerCase();
-        // Match if the title contains the exact search phrase
-        return title.includes(searchLower);
-      });
-      
-      console.log(`Found ${jobs.length} jobs with exact title match`);
-      
-      // If no exact matches, try word by word matching
-      if (jobs.length === 0) {
-        console.log('No exact matches, trying word by word matching...');
-        const searchTerms = searchLower.split(' ').filter(term => term.trim().length > 0);
-        
-        if (searchTerms.length > 0) {
-          jobs = jobs.filter(job => {
-            const title = (job.title || '').toLowerCase();
-            // Match if title contains all search terms (AND condition)
-            return searchTerms.every(term => title.includes(term));
-          });
-          
-          console.log(`Found ${jobs.length} jobs with all search terms in title`);
-        }
-      }
-    }
-    
-    if (type && type !== 'all') {
-      jobs = jobs.filter(job => job.type?.toLowerCase() === type.toLowerCase());
-    }
-    
-    if (location && location !== 'all') {
-      const locationLower = location.toLowerCase();
-      jobs = jobs.filter(job => 
-        job.location?.toLowerCase().includes(locationLower)
-      );
-    }
-    
-    const totalJobs = jobs.length;
-
-    // Format the response to match frontend expectations
-    const result = {
-      success: true,
-      count: jobs.length,
-      data: jobs,
-      pagination: {
-        page: 1,
-        limit: 10, // Default limit
-        total: totalJobs,
-        totalPages: Math.ceil(totalJobs / 10)
+    // Sample jobs data - replace this with your actual database query
+    const jobs = [
+      {
+        id: 'job-1',
+        title: 'Frontend Developer React',
+        company: 'TechCorp Vietnam',
+        location: 'Hồ Chí Minh',
+        type: 'Full-time',
+        salary: '25.000.000 - 35.000.000 VND',
+        status: 'active',
+        postedDate: '2024-01-10',
+        deadline: '2024-02-10',
+        description: 'Chúng tôi đang tìm kiếm Frontend Developer có kinh nghiệm với React.',
+        requirements: ['React', 'JavaScript', 'TypeScript'],
+        benefits: ['Lương cao', 'Bảo hiểm', 'Remote work'],
+        tags: ['React', 'Frontend', 'JavaScript'],
+        isRemote: false,
+        createdAt: new Date('2024-01-10').toISOString(),
+        updatedAt: new Date('2024-01-10').toISOString()
       },
-      executionTime: Date.now() - startTime
-    };
+      {
+        id: 'job-2',
+        title: 'Backend Developer Node.js',
+        company: 'StartupHub',
+        location: 'Hà Nội',
+        type: 'Full-time',
+        salary: '20.000.000 - 30.000.000 VND',
+        status: 'pending',
+        postedDate: '2024-01-08',
+        deadline: '2024-02-08',
+        description: 'Tham gia phát triển backend cho ứng dụng fintech.',
+        requirements: ['Node.js', 'MongoDB', 'Express'],
+        benefits: ['Stock options', 'Flexible hours'],
+        tags: ['Node.js', 'Backend', 'MongoDB'],
+        isRemote: true,
+        createdAt: new Date('2024-01-08').toISOString(),
+        updatedAt: new Date('2024-01-08').toISOString()
+      },
+      {
+        id: 'job-3',
+        title: 'UI/UX Designer',
+        company: 'Creative Studio',
+        location: 'Đà Nẵng',
+        type: 'Part-time',
+        salary: '15.000.000 - 20.000.000 VND',
+        status: 'pending',
+        postedDate: '2024-01-12',
+        deadline: '2024-02-12',
+        description: 'Thiết kế giao diện người dùng cho các ứng dụng mobile và web.',
+        requirements: ['Figma', 'Sketch', 'Adobe XD'],
+        benefits: ['Làm việc linh hoạt', 'Môi trường sáng tạo'],
+        tags: ['UI/UX', 'Design', 'Figma'],
+        isRemote: false,
+        createdAt: new Date('2024-01-12').toISOString(),
+        updatedAt: new Date('2024-01-12').toISOString()
+      },
+      {
+        id: 'job-4',
+        title: 'DevOps Engineer',
+        company: 'CloudTech',
+        location: 'Remote',
+        type: 'Full-time',
+        salary: '30.000.000 - 40.000.000 VND',
+        status: 'active',
+        postedDate: '2024-01-15',
+        deadline: '2024-02-15',
+        description: 'Quản lý hạ tầng cloud và CI/CD pipelines.',
+        requirements: ['AWS', 'Docker', 'Kubernetes'],
+        benefits: ['Remote 100%', 'Lương cao', 'Flexible hours'],
+        tags: ['DevOps', 'AWS', 'Docker'],
+        isRemote: true,
+        createdAt: new Date('2024-01-15').toISOString(),
+        updatedAt: new Date('2024-01-15').toISOString()
+      },
+      {
+        id: 'job-5',
+        title: 'Mobile Developer Flutter',
+        company: 'AppStudio',
+        location: 'Hồ Chí Minh',
+        type: 'Full-time',
+        salary: '28.000.000 - 38.000.000 VND',
+        status: 'active',
+        postedDate: '2024-01-18',
+        deadline: '2024-02-18',
+        description: 'Phát triển ứng dụng mobile cross-platform với Flutter.',
+        requirements: ['Flutter', 'Dart', 'Firebase'],
+        benefits: ['Lương cao', 'Tham gia dự án thú vị'],
+        tags: ['Flutter', 'Mobile', 'Dart'],
+        isRemote: false,
+        createdAt: new Date('2024-01-18').toISOString(),
+        updatedAt: new Date('2024-01-18').toISOString()
+      }
+    ];
+
+    console.log('✅ [JOBS API] Returning', jobs.length, 'jobs');
     
-    // Cache the result
-    cache.set(cacheKey, {
-      data: result,
-      timestamp: Date.now()
-    });
-    
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error('Error fetching jobs:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json(jobs);
+  } catch (err) {
+    console.error('💥 [JOBS API] Error:', err);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -184,21 +134,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Create a new job using the API client
-    const response = await apiClient.jobs.create({
-      title,
-      company,
-      location,
-      type,
-      salary: salary || null,
-      description,
-      requirements: requirements || [],
-      benefits: benefits || [],
-      image: image || null,
-      status: 'pending',
-    });
+    // const response = await apiClient.jobs.create({
+    //   title,
+    //   company,
+    //   location,
+    //   type,
+    //   salary: salary || null,
+    //   description,
+    //   requirements: requirements || [],
+    //   benefits: benefits || [],
+    //   image: image || null,
+    //   status: 'pending',
+    // });
     
-    const job = response.data;
-    return NextResponse.json(job, { status: 201 });
+    // const job = response.data;
+    // return NextResponse.json(job, { status: 201 });
+    return NextResponse.json({ message: 'POST endpoint is not implemented yet' }, { status: 501 });
   } catch (error) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }

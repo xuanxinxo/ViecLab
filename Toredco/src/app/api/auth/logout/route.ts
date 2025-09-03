@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 // import { SignJWT } from 'jose';
 import { SignJWT } from 'jose/jwt/sign';
-import { prisma } from '@/src/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email({ message: 'Email không hợp lệ' }),

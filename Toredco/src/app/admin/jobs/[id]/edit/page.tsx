@@ -47,11 +47,36 @@ export default function EditJob() {
     }
 
     fetch(`/api/admin/jobs/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        // Check if response is ok before parsing JSON
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('❌ [EDIT JOB] Load job error:', {
+            status: res.status,
+            statusText: res.statusText,
+            error: errorText
+          });
+          
+          if (res.status === 401) {
+            setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            router.push('/admin/login');
+            return;
+          } else if (res.status === 404) {
+            setError('Không tìm thấy việc làm.');
+            return;
+          } else {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+        }
+        
+        return res.json();
+      })
       .then((data) => {
-        if (data.success) {
+        if (data && data.success) {
           const j = data.data;
           const deadlineValue = j?.deadline
             ? new Date(j.deadline).toISOString().slice(0, 10)
@@ -69,11 +94,16 @@ export default function EditJob() {
             deadline: deadlineValue,
             img: j.img || '',
           });
+          
+          console.log('✅ [EDIT JOB] Job data loaded successfully:', j);
         } else {
-          setError(data.message || 'Failed to load job');
+          setError(data?.message || 'Không thể tải thông tin việc làm');
         }
       })
-      .catch(() => setError('Failed to load job'))
+      .catch((err) => {
+        console.error('💥 [EDIT JOB] Load job error:', err);
+        setError('Lỗi kết nối khi tải thông tin việc làm');
+      })
       .finally(() => setLoading(false));
   }, [id, router]);
 
@@ -115,7 +145,6 @@ export default function EditJob() {
     setError('');
 
     try {
-      const token = localStorage.getItem('adminToken');
       const form = new FormData();
 
       form.append('title', formData.title);
@@ -144,87 +173,203 @@ export default function EditJob() {
         form.append('img', selectedImage);
       }
 
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+
       const res = await fetch(`/api/admin/jobs/${id}`, {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`
         },
         body: form,
       });
 
+      // Check if response is ok before parsing JSON
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ [EDIT JOB] HTTP Error:', {
+          status: res.status,
+          statusText: res.statusText,
+          error: errorText
+        });
+        
+        if (res.status === 401) {
+          setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+          router.push('/admin/login');
+          return;
+        } else if (res.status === 404) {
+          setError('Không tìm thấy việc làm để cập nhật.');
+          return;
+        } else {
+          setError(`Lỗi server: ${res.status} - ${res.statusText}`);
+          return;
+        }
+      }
+
       const data = await res.json();
 
       if (data.success) {
+        console.log('✅ [EDIT JOB] Update successful:', data);
         router.push('/admin/jobs');
       } else {
-        setError(data.message || 'Update failed');
+        console.error('❌ [EDIT JOB] Update failed:', data);
+        setError(data.message || 'Cập nhật thất bại');
       }
     } catch (err) {
-      setError('Update failed');
+      console.error('💥 [EDIT JOB] Unexpected error:', err);
+      
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          setError('Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet.');
+        } else if (err.message.includes('JSON')) {
+          setError('Lỗi xử lý dữ liệu từ server.');
+        } else {
+          setError(`Lỗi không xác định: ${err.message}`);
+        }
+      } else {
+        setError('Có lỗi xảy ra khi cập nhật việc làm.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading)
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-xl text-gray-600">Đang tải thông tin việc làm...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-4">Sửa việc làm</h1>
-        {error && <div className="text-red-600 mb-4">{error}</div>}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Sửa việc làm</h1>
+          <button
+            onClick={() => router.push('/admin/jobs')}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            ← Quay lại
+          </button>
+        </div>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Lỗi</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Job Info Summary */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="text-lg font-medium text-blue-800 mb-2">Thông tin việc làm hiện tại</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-gray-700">Tiêu đề:</span> {formData.title || 'Chưa có'}
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Công ty:</span> {formData.company || 'Chưa có'}
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Địa điểm:</span> {formData.location || 'Chưa có'}
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Loại:</span> {formData.type || 'Chưa có'}
+            </div>
+          </div>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-4">
-            <input
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              required
-              placeholder="Tiêu đề"
-              className="w-full px-3 py-2 border rounded"
-            />
-            <input
-              name="company"
-              value={formData.company}
-              onChange={handleInputChange}
-              required
-              placeholder="Công ty"
-              className="w-full px-3 py-2 border rounded"
-            />
-            <input
-              name="location"
-              value={formData.location}
-              onChange={handleInputChange}
-              required
-              placeholder="Địa điểm"
-              className="w-full px-3 py-2 border rounded"
-            />
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option>Full-time</option>
-              <option>Part-time</option>
-              <option>Contract</option>
-            </select>
-            <input
-              name="salary"
-              value={formData.salary}
-              onChange={handleInputChange}
-              placeholder="Lương"
-              className="w-full px-3 py-2 border rounded"
-            />
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={4}
-              placeholder="Mô tả"
-              className="w-full px-3 py-2 border rounded"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề *</label>
+              <input
+                name="title"
+                value={formData.title}
+                onChange={handleInputChange}
+                required
+                placeholder="Nhập tiêu đề việc làm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Công ty *</label>
+              <input
+                name="company"
+                value={formData.company}
+                onChange={handleInputChange}
+                required
+                placeholder="Nhập tên công ty"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Địa điểm *</label>
+              <input
+                name="location"
+                value={formData.location}
+                onChange={handleInputChange}
+                required
+                placeholder="Nhập địa điểm làm việc"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Loại công việc</label>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Contract">Contract</option>
+                <option value="Freelance">Freelance</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mức lương</label>
+              <input
+                name="salary"
+                value={formData.salary}
+                onChange={handleInputChange}
+                placeholder="VD: 15.000.000 - 20.000.000 VND"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả công việc</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={4}
+                placeholder="Mô tả chi tiết về công việc, trách nhiệm, yêu cầu..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
 
             {/* Image preview and upload */}
             <div>
@@ -315,13 +460,16 @@ export default function EditJob() {
             </div>
 
             {/* Deadline */}
-            <input
-              type="date"
-              name="deadline"
-              value={formData.deadline}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border rounded"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hạn nộp hồ sơ</label>
+              <input
+                type="date"
+                name="deadline"
+                value={formData.deadline}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end space-x-4">

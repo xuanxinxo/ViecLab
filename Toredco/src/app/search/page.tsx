@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { Job } from "../jobs/page";
-import { SuspenseBoundary } from "@/src/components/SuspenseBoundary";
+import { SuspenseBoundary } from "@/components/SuspenseBoundary";
 import { debounce } from "lodash";
 
 // Skeleton loader

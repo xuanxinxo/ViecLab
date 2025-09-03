@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// import { createNewJob, updateNewJob } from '@/lib/api';
 import { createNewJob, updateNewJob } from '../../lib/api';
 
 interface NewJobFormProps {
@@ -20,6 +19,7 @@ interface NewJobFormProps {
     deadline: string;
     isRemote: boolean;
     status: string;
+    image?: string;
   };
   isEditing?: boolean;
 }
@@ -39,10 +39,45 @@ export function NewJobForm({ job, isEditing = false }: NewJobFormProps) {
     deadline: job?.deadline || '',
     isRemote: job?.isRemote || false,
     status: job?.status || 'active',
+    image: job?.image || '',
   });
 
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(job?.image || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File ảnh quá lớn. Vui lòng chọn file nhỏ hơn 5MB.');
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Vui lòng chọn file ảnh hợp lệ.');
+        return;
+      }
+
+      setSelectedImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setFormData(prev => ({ ...prev, image: '' }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,10 +93,45 @@ export function NewJobForm({ job, isEditing = false }: NewJobFormProps) {
         deadline: new Date(formData.deadline).toISOString(),
       };
 
-      if (isEditing && job?.id) {
-        await updateNewJob(job.id, jobData);
+      if (selectedImage) {
+        // Nếu có hình ảnh mới, gửi FormData
+        const formDataToSend = new FormData();
+        
+        // Thêm các trường dữ liệu
+        Object.keys(jobData).forEach(key => {
+          if (key === 'requirements' || key === 'benefits' || key === 'tags') {
+            formDataToSend.append(key, JSON.stringify(jobData[key]));
+          } else if (key === 'isRemote') {
+            formDataToSend.append(key, jobData[key].toString());
+          } else {
+            formDataToSend.append(key, jobData[key]);
+          }
+        });
+        
+        // Thêm file hình ảnh
+        formDataToSend.append('image', selectedImage);
+        
+        // Gửi request với FormData
+        const url = isEditing && job?.id ? `/api/admin/newjobs/${job.id}` : '/api/admin/newjobs';
+        const method = isEditing ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          body: formDataToSend,
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.message || 'Có lỗi xảy ra');
+        }
       } else {
-        await createNewJob(jobData);
+        // Nếu không có hình ảnh mới, gửi JSON như cũ
+        if (isEditing && job?.id) {
+          await updateNewJob(job.id, jobData);
+        } else {
+          await createNewJob(jobData);
+        }
       }
       
       router.push('/admin/newjobs');
@@ -200,6 +270,56 @@ export function NewJobForm({ job, isEditing = false }: NewJobFormProps) {
         </div>
       </div>
 
+      {/* Image Upload Section */}
+      <div className="space-y-4">
+        <label className="block text-sm font-medium text-gray-700">
+          Hình ảnh công việc
+        </label>
+        
+        <div className="flex items-center space-x-4">
+          <div className="flex-1">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Chấp nhận: JPG, PNG, GIF. Tối đa 5MB
+            </p>
+          </div>
+          
+          {imagePreview && (
+            <button
+              type="button"
+              onClick={removeImage}
+              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              Xóa ảnh
+            </button>
+          )}
+        </div>
+
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className="mt-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">Xem trước:</p>
+            <div className="relative inline-block">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="max-w-xs max-h-48 rounded-lg border border-gray-300 shadow-sm"
+              />
+              {selectedImage && (
+                <div className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                  Mới
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Mô tả công việc *</label>
         <textarea
@@ -268,3 +388,7 @@ export function NewJobForm({ job, isEditing = false }: NewJobFormProps) {
     </form>
   );
 }
+
+
+
+

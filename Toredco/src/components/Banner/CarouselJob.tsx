@@ -43,8 +43,12 @@ function ApplyModal({ open, onClose, job }: { open: boolean; onClose: () => void
       body: JSON.stringify({ ...form, jobId: job?.id }),
     });
     const data = await res.json();
+    console.log('Application response:', data);
     setSubmitting(false);
-    if (data.success) {
+    
+    // Handle nested response structure
+    const isSuccess = data.success && (data.data?.success !== false);
+    if (isSuccess) {
       setMessage('Ứng tuyển thành công!');
       setForm({ name: '', email: '', phone: '', cv: '', message: '' });
       setTimeout(() => onClose(), 1200);
